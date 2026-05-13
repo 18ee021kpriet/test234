@@ -1,0 +1,148 @@
+{
+  "metadata": {
+    "name": "install-sql-server",
+    "namespace": "argo",
+    "uid": "f4655c98-5e2a-4703-9fd2-bec7e74a20a3",
+    "resourceVersion": "26248114",
+    "generation": 1,
+    "creationTimestamp": "2026-04-30T14:59:50Z",
+    "labels": {
+      "app": "sql-server",
+      "env": "environment-setup",
+      "workflows.argoproj.io/creator": "system-serviceaccount-argo-argo-server"
+    },
+    "managedFields": [
+      {
+        "manager": "argo",
+        "operation": "Update",
+        "apiVersion": "argoproj.io/v1alpha1",
+        "time": "2026-04-30T14:59:50Z",
+        "fieldsType": "FieldsV1",
+        "fieldsV1": {
+          "f:metadata": {
+            "f:labels": {
+              ".": {},
+              "f:app": {},
+              "f:env": {},
+              "f:workflows.argoproj.io/creator": {}
+            }
+          },
+          "f:spec": {}
+        }
+      }
+    ]
+  },
+  "spec": {
+    "templates": [
+      {
+        "name": "main",
+        "inputs": {},
+        "outputs": {},
+        "metadata": {},
+        "dag": {
+          "tasks": [
+            {
+              "name": "run-install-sql-server",
+              "template": "install-sql-server-tpl",
+              "arguments": {}
+            }
+          ]
+        }
+      },
+      {
+        "name": "install-sql-server-tpl",
+        "inputs": {},
+        "outputs": {},
+        "metadata": {},
+        "script": {
+          "name": "",
+          "image": "mcr.microsoft.com/powershell:latest",
+          "command": [
+            "pwsh",
+            "-NonInteractive",
+            "-Command"
+          ],
+          "env": [
+            {
+              "name": "SCRIPT_URL",
+              "value": "{{workflow.parameters.script-url}}"
+            },
+            {
+              "name": "SA_PASSWORD",
+              "value": "{{workflow.parameters.sa-password}}"
+            },
+            {
+              "name": "SQL_EDITION",
+              "value": "{{workflow.parameters.sql-edition}}"
+            },
+            {
+              "name": "INSTALL_PATH",
+              "value": "{{workflow.parameters.install-path}}"
+            },
+            {
+              "name": "DATA_PATH",
+              "value": "{{workflow.parameters.data-path}}"
+            },
+            {
+              "name": "INSTANCE_NAME",
+              "value": "{{workflow.parameters.instance-name}}"
+            },
+            {
+              "name": "TCP_PORT",
+              "value": "{{workflow.parameters.tcp-port}}"
+            }
+          ],
+          "resources": {
+            "limits": {
+              "cpu": "2",
+              "memory": "4Gi"
+            },
+            "requests": {
+              "cpu": "1",
+              "memory": "2Gi"
+            }
+          },
+          "source": "$scriptPath = '/tmp/Install-SQL-Server.ps1'\nWrite-Host 'Downloading Install-SQL-Server.ps1...'\nInvoke-WebRequest -Uri $env:SCRIPT_URL -OutFile $scriptPath -UseBasicParsing\nWrite-Host 'Download complete.'\nWrite-Host 'Starting SQL Server installation...'\n& $scriptPath -SAPassword $env:SA_PASSWORD -Edition $env:SQL_EDITION -InstallPath $env:INSTALL_PATH -DataPath $env:DATA_PATH -InstanceName $env:INSTANCE_NAME -TcpPort $env:TCP_PORT\nif ($LASTEXITCODE -ne 0) {\n  Write-Error \"Installation failed with exit code $LASTEXITCODE\"\n  exit $LASTEXITCODE\n}\nWrite-Host 'SQL Server installation completed successfully.'"
+        },
+        "activeDeadlineSeconds": 1800,
+        "retryStrategy": {
+          "limit": "2",
+          "retryPolicy": "OnFailure"
+        }
+      }
+    ],
+    "entrypoint": "main",
+    "arguments": {
+      "parameters": [
+        {
+          "name": "script-url",
+          "value": "https://raw.githubusercontent.com/18ee021kpriet/test234/main/Install-SQL-Server.ps1"
+        },
+        {
+          "name": "sa-password",
+          "value": "SqlStr0ng!Pass"
+        },
+        {
+          "name": "sql-edition",
+          "value": "Developer"
+        },
+        {
+          "name": "install-path",
+          "value": "C:\\Program Files\\Microsoft SQL Server"
+        },
+        {
+          "name": "data-path",
+          "value": "C:\\SQLData"
+        },
+        {
+          "name": "instance-name",
+          "value": "MSSQLSERVER"
+        },
+        {
+          "name": "tcp-port",
+          "value": "1433"
+        }
+      ]
+    }
+  }
+}
