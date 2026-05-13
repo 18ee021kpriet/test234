@@ -1,25 +1,73 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: test
+  name: testhybrsqlyaml
+  labels:
+    app: sql-server
+    env: environment-setup
 spec:
   entrypoint: main
   arguments:
     parameters:
-      - name: param1
-        value: default-value
+      - name: script-url
+        value: "https://raw.githubusercontent.com/18ee021kpriet/test234/main/Install-SQL-Server.ps1"
+      - name: sa-password
+        value: "SqlStr0ng!Pass"
+      - name: sql-edition
+        value: "Developer"
+      - name: install-path
+        value: "C:\\Program Files\\Microsoft SQL Server"
+      - name: data-path
+        value: "C:\\SQLData"
+      - name: instance-name
+        value: "MSSQLSERVER"
+      - name: tcp-port
+        value: "1433"
   templates:
     - name: main
       dag:
         tasks:
-          - name: step1
-            template: step1-tpl
-    - name: step1-tpl
+          - name: run-install-sql-server
+            template: install-sql-server-tpl
+    - name: install-sql-server-tpl
       script:
-        image: alpine:latest
-        command: [sh]
+        image: mcr.microsoft.com/powershell:latest
+        command: ["pwsh", "-NonInteractive", "-Command"]
+        env:
+          - name: SCRIPT_URL
+            value: "{{workflow.parameters.script-url}}"
+          - name: SA_PASSWORD
+            value: "{{workflow.parameters.sa-password}}"
+          - name: SQL_EDITION
+            value: "{{workflow.parameters.sql-edition}}"
+          - name: INSTALL_PATH
+            value: "{{workflow.parameters.install-path}}"
+          - name: DATA_PATH
+            value: "{{workflow.parameters.data-path}}"
+          - name: INSTANCE_NAME
+            value: "{{workflow.parameters.instance-name}}"
+          - name: TCP_PORT
+            value: "{{workflow.parameters.tcp-port}}"
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+          requests:
+            cpu: "1"
+            memory: "2Gi"
         source: |
-          echo "{{inputs.parameters.param1}}"
-      inputs:
-        parameters:
-          - name: param1
+          $scriptPath = '/tmp/Install-SQL-Server.ps1'
+          Write-Host 'Downloading Install-SQL-Server.ps1...'
+          Invoke-WebRequest -Uri $env:SCRIPT_URL -OutFile $scriptPath -UseBasicParsing
+          Write-Host 'Download complete.'
+          Write-Host 'Starting SQL Server installation...'
+          & $scriptPath -SAPassword $env:SA_PASSWORD -Edition $env:SQL_EDITION -InstallPath $env:INSTALL_PATH -DataPath $env:DATA_PATH -InstanceName $env:INSTANCE_NAME -TcpPort $env:TCP_PORT
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Installation failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          Write-Host 'SQL Server installation completed successfully.'
+      activeDeadlineSeconds: 1800
+      retryStrategy:
+        limit: "2"
+        retryPolicy: OnFailure
