@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: helloworld
+spec:
+  entrypoint: main
+  arguments:
+    parameters:
+      - name: param1
+        value: default-value
+  templates:
+    - name: main
+      dag:
+        tasks:
+          - name: step1
+            template: step1-tpl
+    - name: step1-tpl
+      script:
+        image: alpine:latest
+        command: [sh]
+        source: |
+          echo "{{inputs.parameters.param1}}"
+      inputs:
+        parameters:
+          - name: param1
